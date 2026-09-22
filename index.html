@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEXUS СКД</title>
-  <!-- Telegram Web App SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     body {
@@ -17,22 +16,6 @@
       flex-direction: column;
       align-items: center;
       box-sizing: border-box;
-    }
-    .status-banner {
-      display: none;
-      width: 100%;
-      max-width: 380px;
-      padding: 12px;
-      margin-bottom: 14px;
-      border-radius: 10px;
-      text-align: center;
-      font-weight: 600;
-      font-size: 14px;
-      box-sizing: border-box;
-    }
-    .status-warn {
-      background-color: #d29922;
-      color: #000;
     }
     .card {
       background: var(--tg-theme-secondary-bg-color, #1b222d);
@@ -57,6 +40,10 @@
       cursor: pointer;
       color: white;
       transition: opacity 0.2s, transform 0.1s;
+      display: block;
+      text-align: center;
+      text-decoration: none;
+      box-sizing: border-box;
     }
     .btn:active {
       opacity: 0.7;
@@ -85,21 +72,19 @@
 </head>
 <body>
 
-  <div id="statusBanner" class="status-banner status-warn"></div>
-
   <div class="card">
     <h2>NEXUS ACCESS</h2>
-    <p>Термінал онлайн 🟢</p>
+    <p>Панель керування 🟢</p>
     
-    <button class="btn btn-open" onclick="sendAction('/open')">🔓 Відчинити двері</button>
-    <button class="btn btn-otp" onclick="sendAction('/guest')">🔑 Створити OTP-код (15 хв)</button>
-    <button class="btn btn-logs" onclick="sendAction('/logs')">📜 Журнал подій</button>
+    <button class="btn btn-open" onclick="runCommand('open')">🔓 Відчинити двері</button>
+    <button class="btn btn-otp" onclick="runCommand('guest')">🔑 Створити OTP-код (15 хв)</button>
+    <button class="btn btn-logs" onclick="runCommand('logs')">📜 Журнал подій</button>
   </div>
 
   <div class="card">
-    <h2>Реєстрація нової картки</h2>
+    <h2>Реєстрація картки</h2>
     <input type="text" id="userName" placeholder="Введіть ім'я користувача...">
-    <button class="btn btn-enroll" onclick="startEnroll()">➕ Запустити реєстрацію</button>
+    <button class="btn btn-enroll" onclick="runEnroll()">➕ Запустити реєстрацію</button>
   </div>
 
   <script>
@@ -107,37 +92,23 @@
     tg.ready();
     tg.expand();
 
-    function showWarning(text) {
-      const banner = document.getElementById('statusBanner');
-      banner.innerText = text;
-      banner.style.display = 'block';
-      setTimeout(() => { banner.style.display = 'none'; }, 3500);
-    }
-
-    function sendAction(cmd) {
+    function runCommand(action) {
       if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
-      try {
-        tg.sendData(cmd);
-      } catch (err) {
-        showWarning("⚠️ Запустіть додаток через кнопку клавіатури внизу чату!");
-      }
+      // Працює з будь-якого режиму запуску (Menu Button, пряме посилання тощо)
+      tg.openTelegramLink('https://t.me/cardkisl_bot?start=' + action);
+      tg.close();
     }
 
-    function startEnroll() {
-      const input = document.getElementById('userName');
-      const name = input.value.trim();
+    function runEnroll() {
+      const name = document.getElementById('userName').value.trim();
       if (!name) {
-        if (tg.showAlert) tg.showAlert("Вкажіть ім'я перед реєстрацією!");
+        if (tg.showAlert) tg.showAlert("Вкажіть ім'я!");
         else alert("Вкажіть ім'я!");
         return;
       }
       if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-      try {
-        tg.sendData('/enroll ' + name);
-        input.value = '';
-      } catch (err) {
-        showWarning("⚠️ Запустіть додаток через кнопку клавіатури внизу чату!");
-      }
+      tg.openTelegramLink('https://t.me/cardkisl_bot?start=enroll_' + encodeURIComponent(name));
+      tg.close();
     }
   </script>
 </body>
