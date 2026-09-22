@@ -18,6 +18,31 @@
       align-items: center;
       box-sizing: border-box;
     }
+    .status-banner {
+      display: none;
+      width: 100%;
+      max-width: 380px;
+      padding: 12px;
+      margin-bottom: 14px;
+      border-radius: 10px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 15px;
+      box-sizing: border-box;
+      animation: fadeIn 0.3s ease;
+    }
+    .status-success {
+      background-color: #238636;
+      color: white;
+    }
+    .status-error {
+      background-color: #da3633;
+      color: white;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
     .card {
       background: var(--tg-theme-secondary-bg-color, #1b222d);
       border-radius: 14px;
@@ -69,6 +94,9 @@
 </head>
 <body>
 
+  <!-- Блок спливаючого сповіщення -->
+  <div id="statusBanner" class="status-banner"></div>
+
   <div class="card">
     <h2>NEXUS ACCESS</h2>
     <p>Термінал підключено 🟢</p>
@@ -92,6 +120,17 @@
     const BOT_TOKEN = "8794258976:AAFPZXvU-ZMcabF15Q-IDv4P9AIElQMFM3w";
     const CHAT_ID = "1246253926";
 
+    function showStatus(text, isError = false) {
+      const banner = document.getElementById('statusBanner');
+      banner.innerText = text;
+      banner.className = 'status-banner ' + (isError ? 'status-error' : 'status-success');
+      banner.style.display = 'block';
+
+      setTimeout(() => {
+        banner.style.display = 'none';
+      }, 2500);
+    }
+
     function sendTelegramDirect(textCommand) {
       fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
         method: "POST",
@@ -101,23 +140,21 @@
           text: textCommand
         })
       })
-      .then(() => {
-        setTimeout(() => {
-          if (tg.close) tg.close();
-        }, 150);
+      .then(res => res.json())
+      .then(data => {
+        if (data.ok) {
+          showStatus("✅ Команду надіслано в систему!");
+        } else {
+          showStatus("❌ Помилка надсилання", true);
+        }
       })
-      .catch((err) => {
-        console.error("Fetch error:", err);
+      .catch(err => {
+        showStatus("❌ Помилка з'єднання", true);
       });
     }
 
     function sendAction(cmd) {
       if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
-      
-      try {
-        tg.sendData(cmd);
-      } catch (e) {}
-
       sendTelegramDirect(cmd);
     }
 
@@ -130,13 +167,8 @@
         return;
       }
       if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-      
-      const cmd = '/enroll ' + name;
-      try {
-        tg.sendData(cmd);
-      } catch (e) {}
-
-      sendTelegramDirect(cmd);
+      sendTelegramDirect('/enroll ' + name);
+      input.value = '';
     }
   </script>
 </body>
