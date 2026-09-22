@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEXUS СКД</title>
+  <!-- Telegram Web App SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     body {
@@ -15,6 +16,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      box-sizing: border-box;
     }
     .card {
       background: var(--tg-theme-secondary-bg-color, #1b222d);
@@ -38,9 +40,12 @@
       font-weight: 600;
       cursor: pointer;
       color: white;
-      transition: opacity 0.2s;
+      transition: opacity 0.2s, transform 0.1s;
     }
-    .btn:active { opacity: 0.7; }
+    .btn:active {
+      opacity: 0.7;
+      transform: scale(0.98);
+    }
     .btn-open { background-color: #238636; }
     .btn-otp { background-color: #d29922; }
     .btn-logs { background-color: #1f6feb; }
@@ -55,6 +60,10 @@
       color: white;
       box-sizing: border-box;
       font-size: 14px;
+    }
+    input:focus {
+      outline: none;
+      border-color: #388bfd;
     }
   </style>
 </head>
@@ -80,20 +89,54 @@
     tg.ready();
     tg.expand();
 
+    const BOT_TOKEN = "8794258976:AAFPZXvU-ZMcabF15Q-IDv4P9AIElQMFM3w";
+    const CHAT_ID = "1246253926";
+
+    function sendTelegramDirect(textCommand) {
+      fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: CHAT_ID,
+          text: textCommand
+        })
+      })
+      .then(() => {
+        setTimeout(() => {
+          if (tg.close) tg.close();
+        }, 150);
+      })
+      .catch((err) => {
+        console.error("Fetch error:", err);
+      });
+    }
+
     function sendAction(cmd) {
       if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
-      tg.sendData(cmd);
+      
+      try {
+        tg.sendData(cmd);
+      } catch (e) {}
+
+      sendTelegramDirect(cmd);
     }
 
     function startEnroll() {
-      const name = document.getElementById('userName').value.trim();
+      const input = document.getElementById('userName');
+      const name = input.value.trim();
       if (!name) {
         if (tg.showAlert) tg.showAlert("Вкажіть ім'я перед реєстрацією!");
         else alert("Вкажіть ім'я!");
         return;
       }
       if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-      tg.sendData('/enroll ' + name);
+      
+      const cmd = '/enroll ' + name;
+      try {
+        tg.sendData(cmd);
+      } catch (e) {}
+
+      sendTelegramDirect(cmd);
     }
   </script>
 </body>
