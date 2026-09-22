@@ -1,164 +1,119 @@
-#pragma once
-#include <WiFiClientSecure.h>
-#include <UniversalTelegramBot.h>
-#include <Preferences.h>
-
-#define BOT_TOKEN "8794258976:AAFPZXvU-ZMcabF15Q-IDv4P9AIElQMFM3w"
-const String PRIMARY_ADMIN_CHAT_ID = "1246253926";
-
-Preferences adminPrefs;
-WiFiClientSecure secured_client;
-UniversalTelegramBot bot(BOT_TOKEN, secured_client);
-
-extern void triggerDoorUnlockAsync();
-extern void addLogEntry(String timeStr, String msg, bool isAlert);
-extern String getFormattedTime();
-extern String generateGuestOTP(uint32_t durationSec);
-extern String getLogsReport();
-extern String getUsersReport();
-extern void startEnrollmentMode(String userName);
-
-unsigned long lastBotCheckTime = 0;
-const unsigned long BOT_CHECK_INTERVAL = 800;
-
-unsigned long lastCommandTime = 0;
-const unsigned long SPAM_COOLDOWN_MS = 1500;
-
-bool isUserAuthorized(String chatId) {
-  if (chatId == PRIMARY_ADMIN_CHAT_ID) return true;
-  adminPrefs.begin("admins_db", true);
-  bool authorized = adminPrefs.isKey(chatId.c_str());
-  adminPrefs.end();
-  return authorized;
-}
-
-void saveAdminId(String newChatId) {
-  adminPrefs.begin("admins_db", false);
-  adminPrefs.putBool(newChatId.c_str(), true);
-  adminPrefs.end();
-}
-
-void removeAdminId(String targetChatId) {
-  adminPrefs.begin("admins_db", false);
-  if (adminPrefs.isKey(targetChatId.c_str())) {
-    adminPrefs.remove(targetChatId.c_str());
-  }
-  adminPrefs.end();
-}
-
-void sendTelegramReply(String targetChatId, String messageText) {
-  String keyboardJson = "[[\"📱 Відкрити NEXUS Mini App\"],[\"🔓 Відчинити двері\", \"🔑 Гостьовий PIN (OTP)\"],[\"📜 Журнал подій\", \"👥 Список карток\"]]";
-  bot.sendMessageWithReplyKeyboard(targetChatId, messageText, "Markdown", keyboardJson, true);
-}
-
-void initTelegramBot() {
-  secured_client.setInsecure();
-  bot.sendMessage(PRIMARY_ADMIN_CHAT_ID, "🚀 *Термінал СКД на базі ESP32 готовий!*\nКерування правами доступу активне.", "Markdown");
-}
-
-void handleTelegramMessages(int numNewMessages) {
-  for (int i = 0; i < numNewMessages; i++) {
-    String senderChatId = String(bot.messages[i].chat_id);
-    String text = bot.messages[i].text;
-    String senderName = bot.messages[i].from_name;
-
-    if (millis() - lastCommandTime < SPAM_COOLDOWN_MS) {
-      continue;
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS СКД</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body {
+      background-color: var(--tg-theme-bg-color, #0f141c);
+      color: var(--tg-theme-text-color, #ffffff);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-sizing: border-box;
     }
-    lastCommandTime = millis();
+    .card {
+      background: var(--tg-theme-secondary-bg-color, #1b222d);
+      border-radius: 14px;
+      padding: 18px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      margin-bottom: 16px;
+      box-sizing: border-box;
+    }
+    h2 { margin: 0 0 10px 0; font-size: 18px; text-align: center; }
+    p { margin: 0 0 14px 0; font-size: 13px; text-align: center; color: #8b949e; }
+    .btn {
+      width: 100%;
+      padding: 13px;
+      margin: 6px 0;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      color: white;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn:active {
+      opacity: 0.7;
+      transform: scale(0.98);
+    }
+    .btn-open { background-color: #238636; }
+    .btn-otp { background-color: #d29922; }
+    .btn-logs { background-color: #1f6feb; }
+    .btn-enroll { background-color: #8957e5; }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 6px 0 10px 0;
+      border-radius: 8px;
+      border: 1px solid #30363d;
+      background: #0d1117;
+      color: white;
+      box-sizing: border-box;
+      font-size: 14px;
+    }
+    input:focus {
+      outline: none;
+      border-color: #388bfd;
+    }
+  </style>
+</head>
+<body>
 
-    if (text.startsWith("/start ")) {
-      String param = text.substring(7);
-      if (param == "open" || param == "/open") text = "/open";
-      else if (param == "guest" || param == "/guest") text = "/guest";
-      else if (param == "logs" || param == "/logs") text = "/logs";
-      else if (param.startsWith("enroll_")) text = "/enroll " + param.substring(7);
-      else if (param.startsWith("grant_")) text = "/grant " + param.substring(6);
-    }
+  <div class="card">
+    <h2>NEXUS ACCESS</h2>
+    <p>Термінал підключено 🟢</p>
+    
+    <button class="btn btn-open" onclick="sendAction('/open')">🔓 Відчинити двері</button>
+    <button class="btn btn-otp" onclick="sendAction('/guest')">🔑 Створити OTP-код (15 хв)</button>
+    <button class="btn btn-logs" onclick="sendAction('/logs')">📜 Журнал подій</button>
+  </div>
 
-    // 1. НАДАННЯ ДОСТУПУ (Лише головний адмін)
-    if (text.startsWith("/grant ")) {
-      if (senderChatId != PRIMARY_ADMIN_CHAT_ID) {
-        bot.sendMessage(senderChatId, "⛔ Лише головний адміністратор може надавати доступ!", "Markdown");
-        continue;
-      }
-      String targetId = text.substring(7);
-      targetId.trim();
-      if (targetId.length() > 3) {
-        saveAdminId(targetId);
-        addLogEntry(getFormattedTime(), "Admin added: " + targetId, false);
-        sendTelegramReply(PRIMARY_ADMIN_CHAT_ID, "✅ ID `" + targetId + "` успішно додано до пам'яті ESP32.");
-        sendTelegramReply(targetId, "🎉 *Вам надано доступ до керування цим замком!*");
-      }
-      continue;
-    }
+  <div class="card">
+    <h2>Реєстрація картки</h2>
+    <input type="text" id="userName" placeholder="Введіть ім'я користувача...">
+    <button class="btn btn-enroll" onclick="startEnroll()">➕ Запустити реєстрацію</button>
+  </div>
 
-    // 2. ВИДАЛЕННЯ ДОСТУПУ (Лише головний адмін)
-    if (text.startsWith("/revoke ")) {
-      if (senderChatId != PRIMARY_ADMIN_CHAT_ID) {
-        bot.sendMessage(senderChatId, "⛔ Лише головний адміністратор може видаляти користувачів!", "Markdown");
-        continue;
-      }
-      String targetId = text.substring(8);
-      targetId.trim();
-      if (targetId == PRIMARY_ADMIN_CHAT_ID) {
-        sendTelegramReply(PRIMARY_ADMIN_CHAT_ID, "⚠️ Неможливо видалити самого себе!");
-      } else if (targetId.length() > 3) {
-        removeAdminId(targetId);
-        addLogEntry(getFormattedTime(), "Revoked: " + targetId, true);
-        sendTelegramReply(PRIMARY_ADMIN_CHAT_ID, "🗑 *Користувача* `" + targetId + "` *видалено!* Доступ анульовано.");
-        bot.sendMessage(targetId, "🚫 *Ваш доступ до системи замка було скасовано.*", "Markdown");
-      }
-      continue;
-    }
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
 
-    // Перевірка прав
-    if (!isUserAuthorized(senderChatId)) {
-      bot.sendMessage(senderChatId, "⛔ *Доступ заборонено!*\nВаш ID: `" + senderChatId + "`", "Markdown");
-      String alertMsg = "🚨 *Спроба несанкціонованого доступу!*\nВід: *" + senderName + "*\nID: `" + senderChatId + "`\nКоманда: `" + text + "`";
-      bot.sendMessage(PRIMARY_ADMIN_CHAT_ID, alertMsg, "Markdown");
-      addLogEntry(getFormattedTime(), "Denied: " + senderName, true);
-      continue;
-    }
-
-    // Дозволені команди
-    if (text == "/open" || text == "🔓 Відчинити двері") {
-      triggerDoorUnlockAsync();
-      addLogEntry(getFormattedTime(), "Remote Open", false);
-      sendTelegramReply(senderChatId, "✅ *Двері відчинено дистанційно!*\n🕒 Час: `" + getFormattedTime() + "`");
-    }
-    else if (text == "/guest" || text == "🔑 Гостьовий PIN (OTP)") {
-      String otp = generateGuestOTP(900);
-      addLogEntry(getFormattedTime(), "OTP Created", false);
-      sendTelegramReply(senderChatId, "🔑 *ГОСТЬОВИЙ PIN СТВОРЕНО:*\n\nКод: `" + otp + "`\n⏳ Дійсний: *15 хвилин*\nℹ️ Згорить після першого входу.");
-    }
-    else if (text == "/logs" || text == "📜 Журнал подій") {
-      sendTelegramReply(senderChatId, getLogsReport());
-    }
-    else if (text == "/users" || text == "👥 Список карток") {
-      sendTelegramReply(senderChatId, getUsersReport());
-    }
-    else if (text.startsWith("/enroll ")) {
-      String targetName = text.substring(8);
-      targetName.trim();
-      if (targetName.length() > 0) {
-        startEnrollmentMode(targetName);
-        sendTelegramReply(senderChatId, "⏳ *Режим додавання картки!*\nІм'я: *" + targetName + "*\nПіднесіть картку до термінала.");
+    function sendAction(cmd) {
+      if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+      try {
+        tg.sendData(cmd);
+      } catch (e) {
+        tg.openTelegramLink('https://t.me/cardkisl_bot?start=' + encodeURIComponent(cmd));
       }
     }
-    else if (text == "/start" || text == "/menu") {
-      sendTelegramReply(senderChatId, "👋 *Головне меню керування замком:*");
-    }
-  }
-}
 
-void updateTelegramBot() {
-  if (millis() - lastBotCheckTime > BOT_CHECK_INTERVAL) {
-    int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
-    while (numNewMessages) {
-      handleTelegramMessages(numNewMessages);
-      numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+    function startEnroll() {
+      const input = document.getElementById('userName');
+      const name = input.value.trim();
+      if (!name) {
+        if (tg.showAlert) tg.showAlert("Вкажіть ім'я перед реєстрацією!");
+        else alert("Вкажіть ім'я!");
+        return;
+      }
+      if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      const cmd = '/enroll ' + name;
+      try {
+        tg.sendData(cmd);
+      } catch (e) {
+        tg.openTelegramLink('https://t.me/cardkisl_bot?start=enroll_' + encodeURIComponent(name));
+      }
+      input.value = '';
     }
-    lastBotCheckTime = millis();
-  }
-}
+  </script>
+</body>
+</html>
