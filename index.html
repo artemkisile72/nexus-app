@@ -97,30 +97,47 @@
 
     function sendAction(cmd) {
       if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
-      tg.switchInlineQuery(cmd, ['users']);
+      try {
+        tg.sendData(cmd);
+      } catch (e) {
+        tg.openTelegramLink('https://t.me/cardkisl_bot?start=' + encodeURIComponent(cmd));
+      }
     }
 
     function startEnroll() {
-      const name = document.getElementById('userName').value.trim();
+      const input = document.getElementById('userName');
+      const name = input.value.trim();
       if (!name) {
         if (tg.showAlert) tg.showAlert("Вкажіть ім'я перед реєстрацією!");
         else alert("Вкажіть ім'я!");
         return;
       }
       if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-      tg.switchInlineQuery('/enroll ' + name, ['users']);
+      const cmd = '/enroll ' + name;
+      try {
+        tg.sendData(cmd);
+      } catch (e) {
+        tg.openTelegramLink('https://t.me/cardkisl_bot?start=enroll_' + encodeURIComponent(name));
+      }
+      input.value = '';
     }
 
     function grantAdmin() {
-      const newId = document.getElementById('adminIdInput').value.trim();
+      const input = document.getElementById('adminIdInput');
+      const newId = input.value.trim();
       if (!newId) {
         if (tg.showAlert) tg.showAlert("Введіть числовий Telegram ID!");
         else alert("Введіть Telegram ID!");
         return;
       }
       if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-      tg.switchInlineQuery('/grant ' + newId, ['users']);
-      document.getElementById('adminIdInput').value = '';
+      const cmd = '/grant ' + newId;
+      try {
+        tg.sendData(cmd);
+      } catch (e) {
+        tg.openTelegramLink('https://t.me/cardkisl_bot?start=grant_' + encodeURIComponent(newId));
+      }
+      input.value = '';
     }
   </script>
 </body>
