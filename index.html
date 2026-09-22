@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS СКД</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body {
+      background-color: var(--tg-theme-bg-color, #0f141c);
+      color: var(--tg-theme-text-color, #ffffff);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .card {
+      background: var(--tg-theme-secondary-bg-color, #1b222d);
+      border-radius: 14px;
+      padding: 18px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      margin-bottom: 16px;
+      box-sizing: border-box;
+    }
+    h2 { margin: 0 0 10px 0; font-size: 20px; text-align: center; }
+    p { margin: 0 0 14px 0; font-size: 14px; text-align: center; color: #8b949e; }
+    .btn {
+      width: 100%;
+      padding: 14px;
+      margin: 6px 0;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      color: white;
+      transition: opacity 0.2s;
+    }
+    .btn:active { opacity: 0.7; }
+    .btn-open { background-color: #238636; }
+    .btn-otp { background-color: #d29922; }
+    .btn-logs { background-color: #1f6feb; }
+    .btn-enroll { background-color: #8957e5; }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      border-radius: 8px;
+      border: 1px solid #30363d;
+      background: #0d1117;
+      color: white;
+      box-sizing: border-box;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>NEXUS ACCESS</h2>
+    <p>Термінал підключено 🟢</p>
+    
+    <button class="btn btn-open" onclick="sendAction('/open')">🔓 Відчинити двері</button>
+    <button class="btn btn-otp" onclick="sendAction('/guest')">🔑 Створити OTP-код (15 хв)</button>
+    <button class="btn btn-logs" onclick="sendAction('/logs')">📜 Журнал подій</button>
+  </div>
+
+  <div class="card">
+    <h2>Реєстрація нової картки</h2>
+    <input type="text" id="userName" placeholder="Введіть ім'я користувача...">
+    <button class="btn btn-enroll" onclick="startEnroll()">➕ Запустити реєстрацію</button>
+  </div>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+
+    function sendAction(cmd) {
+      if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+      tg.sendData(cmd);
+    }
+
+    function startEnroll() {
+      const name = document.getElementById('userName').value.trim();
+      if (!name) {
+        if (tg.showAlert) tg.showAlert("Вкажіть ім'я перед реєстрацією!");
+        else alert("Вкажіть ім'я!");
+        return;
+      }
+      if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      tg.sendData('/enroll ' + name);
+    }
+  </script>
+</body>
+</html>
