@@ -49,6 +49,58 @@
     .btn-otp { background-color: #d29922; }
     .btn-logs { background-color: #1f6feb; }
     .btn-enroll { background-color: #8957e5; }
+    
+    /* Список користувачів */
+    .user-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .user-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 13px;
+    }
+    .user-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .user-name {
+      font-weight: bold;
+      color: #58a6ff;
+    }
+    .user-id {
+      color: #8b949e;
+      font-size: 11px;
+    }
+    .btn-del {
+      background: #da3633;
+      border: none;
+      color: white;
+      border-radius: 6px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .btn-del:active {
+      opacity: 0.7;
+    }
+    .owner-badge {
+      background: #238636;
+      color: white;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
     input {
       width: 100%;
       padding: 12px;
@@ -77,6 +129,16 @@
     <button class="btn btn-logs" onclick="sendAction('/logs')">📜 Журнал подій</button>
   </div>
 
+  <!-- КАРТКА ПЕРЕГЛЯДУ ПІДКЛЮЧЕНИХ КОРИСТУВАЧІВ -->
+  <div class="card">
+    <h2>👥 Підключені користувачі</h2>
+    <p>Список активних адміністраторів</p>
+    
+    <div id="usersContainer" class="user-list">
+      <!-- Користувачі генеруються динамічно через JS -->
+    </div>
+  </div>
+
   <div class="card">
     <h2>Реєстрація картки</h2>
     <input type="text" id="userName" placeholder="Введіть ім'я користувача...">
@@ -87,6 +149,64 @@
     const tg = window.Telegram.WebApp;
     tg.ready();
     tg.expand();
+
+    const PRIMARY_ADMIN_ID = "1246253926";
+
+    // Отримання списку з параметрів URL або використання стандартних
+    function loadUsersList() {
+      const container = document.getElementById('usersContainer');
+      container.innerHTML = '';
+
+      // Базовий список, що синхронізується з ботом
+      let admins = [
+        { id: PRIMARY_ADMIN_ID, name: "Артем (Головний)", isOwner: true }
+      ];
+
+      // Якщо бекенд передав актуальний список через GET-параметр ?admins=...
+      const urlParams = new URLSearchParams(window.location.search);
+      const adminsData = urlParams.get('admins');
+      if (adminsData) {
+        try {
+          admins = JSON.parse(decodeURIComponent(adminsData));
+        } catch (e) {}
+      }
+
+      admins.forEach(user => {
+        const item = document.createElement('div');
+        item.className = 'user-item';
+
+        const info = document.createElement('div');
+        info.className = 'user-info';
+        info.innerHTML = `
+          <div class="user-name">${user.name}</div>
+          <div class="user-id">ID: ${user.id}</div>
+        `;
+
+        item.appendChild(info);
+
+        if (user.isOwner || String(user.id) === PRIMARY_ADMIN_ID) {
+          const badge = document.createElement('span');
+          badge.className = 'owner-badge';
+          badge.innerText = 'Власник 👑';
+          item.appendChild(badge);
+        } else {
+          const delBtn = document.createElement('button');
+          delBtn.className = 'btn-del';
+          delBtn.innerText = '🗑 Видалити';
+          delBtn.onclick = () => revokeAccess(user.id, user.name);
+          item.appendChild(delBtn);
+        }
+
+        container.appendChild(item);
+      });
+    }
+
+    function revokeAccess(userId, name) {
+      if (confirm(`Видалити користувача ${name} (${userId})?`)) {
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
+        sendAction('/revoke ' + userId);
+      }
+    }
 
     function sendAction(cmd) {
       if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
@@ -101,7 +221,7 @@
       const input = document.getElementById('userName');
       const name = input.value.trim();
       if (!name) {
-        if (tg.showAlert) tg.showAlert("Вкажіть ім'я перед реєстрацією!");
+        if (tg.showAlert) tg.showAlert("Вкажіть ім'я!");
         else alert("Вкажіть ім'я!");
         return;
       }
@@ -114,6 +234,9 @@
       }
       input.value = '';
     }
+
+    // Завантажуємо список при відкритті сторінки
+    loadUsersList();
   </script>
 </body>
 </html>
