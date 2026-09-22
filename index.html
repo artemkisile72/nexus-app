@@ -27,23 +27,19 @@
       margin-bottom: 16px;
       box-sizing: border-box;
     }
-    h2 { margin: 0 0 10px 0; font-size: 20px; text-align: center; }
-    p { margin: 0 0 14px 0; font-size: 14px; text-align: center; color: #8b949e; }
+    h2 { margin: 0 0 10px 0; font-size: 18px; text-align: center; }
+    p { margin: 0 0 14px 0; font-size: 13px; text-align: center; color: #8b949e; }
     .btn {
       width: 100%;
-      padding: 14px;
+      padding: 13px;
       margin: 6px 0;
       border: none;
       border-radius: 10px;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 600;
       cursor: pointer;
       color: white;
       transition: opacity 0.2s, transform 0.1s;
-      display: block;
-      text-align: center;
-      text-decoration: none;
-      box-sizing: border-box;
     }
     .btn:active {
       opacity: 0.7;
@@ -53,10 +49,11 @@
     .btn-otp { background-color: #d29922; }
     .btn-logs { background-color: #1f6feb; }
     .btn-enroll { background-color: #8957e5; }
+    .btn-admin { background-color: #da3633; }
     input {
       width: 100%;
       padding: 12px;
-      margin: 8px 0;
+      margin: 6px 0 10px 0;
       border-radius: 8px;
       border: 1px solid #30363d;
       background: #0d1117;
@@ -74,17 +71,23 @@
 
   <div class="card">
     <h2>NEXUS ACCESS</h2>
-    <p>Панель керування 🟢</p>
+    <p>Термінал підключено 🟢</p>
     
-    <button class="btn btn-open" onclick="runCommand('open')">🔓 Відчинити двері</button>
-    <button class="btn btn-otp" onclick="runCommand('guest')">🔑 Створити OTP-код (15 хв)</button>
-    <button class="btn btn-logs" onclick="runCommand('logs')">📜 Журнал подій</button>
+    <button class="btn btn-open" onclick="sendAction('/open')">🔓 Відчинити двері</button>
+    <button class="btn btn-otp" onclick="sendAction('/guest')">🔑 Створити OTP-код (15 хв)</button>
+    <button class="btn btn-logs" onclick="sendAction('/logs')">📜 Журнал подій</button>
   </div>
 
   <div class="card">
     <h2>Реєстрація картки</h2>
     <input type="text" id="userName" placeholder="Введіть ім'я користувача...">
-    <button class="btn btn-enroll" onclick="runEnroll()">➕ Запустити реєстрацію</button>
+    <button class="btn btn-enroll" onclick="startEnroll()">➕ Запустити реєстрацію</button>
+  </div>
+
+  <div class="card">
+    <h2>Керування доступом</h2>
+    <input type="number" id="adminIdInput" placeholder="Введіть Telegram ID...">
+    <button class="btn btn-admin" onclick="grantAdmin()">🛡 Надати доступ користувачу</button>
   </div>
 
   <script>
@@ -92,23 +95,32 @@
     tg.ready();
     tg.expand();
 
-    function runCommand(action) {
+    function sendAction(cmd) {
       if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
-      // Працює з будь-якого режиму запуску (Menu Button, пряме посилання тощо)
-      tg.openTelegramLink('https://t.me/cardkisl_bot?start=' + action);
-      tg.close();
+      tg.switchInlineQuery(cmd, ['users']);
     }
 
-    function runEnroll() {
+    function startEnroll() {
       const name = document.getElementById('userName').value.trim();
       if (!name) {
-        if (tg.showAlert) tg.showAlert("Вкажіть ім'я!");
+        if (tg.showAlert) tg.showAlert("Вкажіть ім'я перед реєстрацією!");
         else alert("Вкажіть ім'я!");
         return;
       }
       if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-      tg.openTelegramLink('https://t.me/cardkisl_bot?start=enroll_' + encodeURIComponent(name));
-      tg.close();
+      tg.switchInlineQuery('/enroll ' + name, ['users']);
+    }
+
+    function grantAdmin() {
+      const newId = document.getElementById('adminIdInput').value.trim();
+      if (!newId) {
+        if (tg.showAlert) tg.showAlert("Введіть числовий Telegram ID!");
+        else alert("Введіть Telegram ID!");
+        return;
+      }
+      if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      tg.switchInlineQuery('/grant ' + newId, ['users']);
+      document.getElementById('adminIdInput').value = '';
     }
   </script>
 </body>
